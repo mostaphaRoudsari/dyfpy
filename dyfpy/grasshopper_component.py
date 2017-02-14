@@ -78,6 +78,7 @@ class Port(object):
             # output
             return cls(port.Name, port.Description, None, None, None)
 
+
 class Input(Port):
     pass
 

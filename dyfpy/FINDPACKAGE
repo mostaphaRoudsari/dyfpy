@@ -26,14 +26,15 @@ def tryGetPluginPath(plugin):
     pkf = []
     for path in _dynamoPaths:
         settingsFile = IO.Path.Combine(_appdata, path, _settingsFilename)
-        with open(settingsFile, 'rb') as outf:
-            for line in outf:
-                if line.strip().startswith('<CustomPackageFolders>'):
-                    for l in outf:
-                        if l.strip().startswith('</CustomPackageFolders>'):
-                            break
-                        else:
-                            pkf.append(l.replace('</string>', '').replace('<string>', '').strip())
+        if IO.File.Exists(settingsFile):
+            with open(settingsFile, 'rb') as outf:
+                for line in outf:
+                    if line.strip().startswith('<CustomPackageFolders>'):
+                        for l in outf:
+                            if l.strip().startswith('</CustomPackageFolders>'):
+                                break
+                            else:
+                                pkf.append(l.replace('</string>', '').replace('<string>', '').strip())
 
     for p in pkf:
         pp = IO.Path.Combine(p, 'packages', plugin, 'extra')

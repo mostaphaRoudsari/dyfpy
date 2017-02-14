@@ -125,8 +125,8 @@ class Workspace(object):
         for ch in child.children:
             self.addChild(doc, parent, chElm, ch)
 
-
     def save(self, path):
+        """Save to dyf file."""
         fp = os.path.join(path, self.name + '.dyf')
         with open(fp, 'wb') as outf:
             outf.write(self.toDyf())
@@ -221,7 +221,7 @@ class Camera(DynamoElement):
                      'eyeX': self.eyeX, 'eyeY': self.eyeX, 'eyeZ': self.eyeZ,
                      'lookX': self.lookX, 'lookY': self.lookY, 'lookZ': self.lookZ,
                      'upX': self.upX, 'upY': self.upY, 'upZ': self.upZ
-        }
+                     }
 
 
 class DynamoNode(DynamoElement):
@@ -246,11 +246,12 @@ class DynamoNode(DynamoElement):
         self.isFrozen = self.toXML(isFrozen)
         self.isPinned = self.toXML(isPinned)
 
-        self.attr = {'guid': self.nodeId, 'type': self.TYPE, 'nickname': self.name,
-                       'x': self.x, 'y': self.y, 'isVisible': self.isVisible,
-                       'isUpstreamVisible': self.isUpstreamVisible, 'lacing': self.lacing,
-                       'isSelectedInput': self.isSelectedInput, 'isFrozen': self.isFrozen,
-                       'isPinned': self.isPinned
+        self.attr = {
+            'guid': self.nodeId, 'type': self.TYPE, 'nickname': self.name,
+            'x': self.x, 'y': self.y, 'isVisible': self.isVisible,
+            'isUpstreamVisible': self.isUpstreamVisible, 'lacing': self.lacing,
+            'isSelectedInput': self.isSelectedInput, 'isFrozen': self.isFrozen,
+            'isPinned': self.isPinned
         }
 
 
@@ -284,6 +285,9 @@ class Input(DynamoNode):
         'Vector3d': 'Vector', 'Point3d': 'Point', 'Interval': 'List'
     }
 
+    _DEFAULTINPUTS = {'Point3d': 'Point.ByCoordinates',
+                      'Vector3d': 'Vector.ByCoordinates'}
+
     def __init__(self, description=None, defaultValue=None, valueType=None,
                  accessType=None, *args, **kwargs):
         super(Input, self).__init__(*args, **kwargs)
@@ -291,7 +295,10 @@ class Input(DynamoNode):
         self.defaultValue = defaultValue
         self.valueType = valueType
         self.accessType = accessType
-
+        if self.name == '_run':
+            # in grasshopper boolean can also be set as intger to have more
+            # options to run the analysis
+            self.valueType = 'bool'
 
     @property
     def children(self):
@@ -305,26 +312,37 @@ class Input(DynamoNode):
         if self.valueType:
             v = '{}: {}'.format(v, self.matchTypes(self.valueType))
 
-        if self.accessType and self.accessType != 'item':
-            v = '{}[]..[]'.format(v)
+        if self.accessType:
+            if self.accessType == 'list':
+                v = '{}[]'.format(v)
+            elif self.accessType == 'tree':
+                v = '{}[]..[]'.format(v)
 
-        # TODO: write match for default values
+        # TODO(): write match for default values
         # Point3d(0, 0, 0) >> Autodesk.Point(0, 0, 0)
         # or [1, 2, 3] >> {1, 2, 3}
         if self.defaultValue is not None:
             if self.accessType and self.accessType != 'item':
-                v = '{} = {}'.format(v, self.defaultValue)
+                dv = str(self.defaultValue) \
+                    .replace('(', '{').replace(')', '}') \
+                    .replace('[', '{').replace(']', '}')
+
+                v = '{} = {}'.format(v, dv)
             else:
-                v = '{} = {}'.format(v, self.defaultValue)
+                if self.valueType in self._DEFAULTINPUTS:
+                    v = '{} = {}({})'.format(v, self._DEFAULTINPUTS[self.valueType],
+                                             self.defaultValue)
+                else:
+                    v = '{} = {}'.format(v, self.defaultValue)
+
         elif self.name.endswith('_'):
             # put null as default value
             if self.accessType and self.accessType != 'item':
-                v = '{} = {}'.format(v, '{null}')
+                v = '{} = {}'.format(v, '{}')
             else:
                 v = '{} = {}'.format(v, 'null')
 
         return (Symbol(v + ';'),)
-
 
     def matchTypes(self, t):
         """Match type names from Grasshopper to Dynamo."""
@@ -384,7 +402,7 @@ def ghToDs(text):
 
 
 def removePluginName(name):
-    remove=('Ladybug_', 'Honeybee_', 'Butterfly_')
+    remove = ('Ladybug_', 'Honeybee_', 'Butterfly_')
     for r in remove:
         name = name.replace(r, '')
     return name
@@ -397,15 +415,16 @@ def nodeFromComponent(component, path, plugin=None, importcode=None, errreportco
     sourceCode = component.code
 
     if not importcode:
-        with open(os.path.abspath(os.path.join(os.path.dirname(__file__), 'FINDPACKAGE'))) as f:
+        with open(os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                               'FINDPACKAGE'))) as f:
             importcode = f.read()
 
     if not errreportcode:
-        with open(os.path.abspath(os.path.join(os.path.dirname(__file__), 'ERRREPORT'))) as f:
+        with open(os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                               'ERRREPORT'))) as f:
             errreportcode = f.read()
 
-    # TODO: write source code to target folder
-    
+    # TODO(): write source code to target folder
 
     # clean the name
     plugin = plugin or component.name.split('_')[0].replace('Plus', '')
@@ -449,7 +468,7 @@ def nodeFromComponent(component, path, plugin=None, importcode=None, errreportco
 
     # output separator
     ocb = CodeBlock(code='\n'.join('out[{}]'.format(i) for i in range(len(outputs))),
-                   name='decompose outputs', x=150, y=515)
+                    name='decompose outputs', x=150, y=515)
     node.addElement(ocb)
     node.addConnector(corenode, ocb)
 
@@ -472,5 +491,6 @@ def nodeFromComponent(component, path, plugin=None, importcode=None, errreportco
     errout = Output(name='ERRReport', description='Report', x=380, y=380)
     node.addElement(errout)
     node.addConnector(errpynode, errout)
-    print 'Converting "{}" from Grasshopper to a Dynamo custom node.'.format(component.name)
+    print('Converting "{}" from Grasshopper to a Dynamo custom node.'
+          .format(component.name))
     node.save(path)
