@@ -267,7 +267,8 @@ class Output(DynamoNode):
     @property
     def children(self):
         if self.description:
-            desc = '// &#xD;&#xA;'.join(self.description.split('\n'))
+            desc = '\n// '.join(self.description.replace('\r\n', '\n').split('\n'))
+            desc = desc.replace('\n', '&#xD;&#xA;')
             v = '// {}&#xD;&#xA;{};'.format(desc, self.name)
         else:
             v = '{};'.format(self.name)
@@ -281,8 +282,9 @@ class Input(DynamoNode):
 
     __INPUTTYPES = {
         'double': 'double', 'int': 'int', 'string': 'string', 'bool': 'bool',
-        'System.Object': 'System.Object', 'GeometryBase': 'Geometry',
-        'Vector3d': 'Vector', 'Point3d': 'Point', 'Interval': 'List'
+        'System.Object': 'var', 'GeometryBase': 'Geometry',
+        'Vector3d': 'Vector', 'Point3d': 'Point', 'Interval': 'double',
+        'Color': 'Color', 'Curve': 'Curve'
     }
 
     _DEFAULTINPUTS = {'Point3d': 'Point.ByCoordinates',
@@ -313,19 +315,27 @@ class Input(DynamoNode):
             v = '{}: {}'.format(v, self.matchTypes(self.valueType))
 
         if self.accessType:
-            if self.accessType == 'list':
+            if self.accessType == 'list' or self.valueType == 'Interval':
                 v = '{}[]'.format(v)
             elif self.accessType == 'tree':
                 v = '{}[]..[]'.format(v)
 
-        # TODO(): write match for default values
-        # Point3d(0, 0, 0) >> Autodesk.Point(0, 0, 0)
-        # or [1, 2, 3] >> {1, 2, 3}
         if self.defaultValue is not None:
+            if self.valueType == 'string':
+                # add double quots
+                if self.accessType != 'item':
+                    self.defaultValue = \
+                        ['&quot;{}&quot;'.format(vv) for vv in self.defaultValue]
+                else:
+                    self.defaultValue = '&quot;{}&quot;'.format(self.defaultValue)
+
             if self.accessType and self.accessType != 'item':
-                dv = str(self.defaultValue) \
-                    .replace('(', '{').replace(')', '}') \
-                    .replace('[', '{').replace(']', '}')
+                if len(self.defaultValue) == 1:
+                    dv = '{%s}' % str(self.defaultValue[0])
+                else:
+                    dv = str(self.defaultValue) \
+                        .replace('(', '{').replace(')', '}') \
+                        .replace('[', '{').replace(']', '}')
 
                 v = '{} = {}'.format(v, dv)
             else:
