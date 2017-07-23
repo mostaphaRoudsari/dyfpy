@@ -282,13 +282,13 @@ class Input(DynamoNode):
 
     __INPUTTYPES = {
         'double': 'double', 'int': 'int', 'string': 'string', 'bool': 'bool',
-        'System.Object': 'var', 'GeometryBase': 'Geometry',
-        'Vector3d': 'Vector', 'Point3d': 'Point', 'Interval': 'double',
-        'Color': 'Color', 'Curve': 'Curve'
+        'System.Object': 'var', 'GeometryBase': 'Autodesk.Geometry',
+        'Vector3d': 'Autodesk.Vector', 'Point3d': 'Autodesk.Point', 'Interval': 'double',
+        'Color': 'DSCore.Color', 'Curve': 'Autodesk.Curve'
     }
 
-    _DEFAULTINPUTS = {'Point3d': 'Point.ByCoordinates',
-                      'Vector3d': 'Vector.ByCoordinates'}
+    _DEFAULTINPUTS = {'Point3d': 'Autodesk.Point.ByCoordinates',
+                      'Vector3d': 'Autodesk.Vector.ByCoordinates'}
 
     def __init__(self, description=None, defaultValue=None, valueType=None,
                  accessType=None, *args, **kwargs):
@@ -422,7 +422,7 @@ def nodeFromComponent(component, path, plugin=None, importcode=None, errreportco
     """Create a node from a ladybug, butterfly, hoenybee grasshopper component."""
     inputs = component.inputs
     outputs = component.outputs
-    sourceCode = component.code
+    # sourceCode = component.code
 
     if not importcode:
         with open(os.path.abspath(os.path.join(os.path.dirname(__file__),

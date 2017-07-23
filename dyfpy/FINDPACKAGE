@@ -38,15 +38,23 @@ def tryGetPluginPath(plugin):
 
     for p in pkf:
         pp = IO.Path.Combine(p, 'packages', plugin, 'extra')
+        # In case of custom folders user may put honeybee under the root folder
+        ppp = IO.Path.Combine(p, plugin, 'extra')
         if IO.Directory.Exists(pp):
             return pp
+        elif IO.Directory.Exists(ppp):
+            return ppp
+
 
 try:
     plugin, filename = IN
+
     p = tryGetPluginPath(plugin)
+
     if not p:
         raise ImportError('{} is not installed! Install it from package manager.'.format(plugin))
-    # import the file and wrap it into sys.append
+
+	# import the file and wrap it into sys.append
     f = IO.Path.Combine(p, 'nodesrc', filename)
     with open(f, 'rb') as inf:
         source = '    '.join(inf.readlines())
@@ -60,7 +68,7 @@ try:
         '    import traceback\n' + \
         '    OUT = "ERROR:\\n\\t{}".format(str(e)) + \\\n' + \
         '    "\\n\\nIf you think this is a bug submit an issue on github.\\n" + \\\n' + \
-        '    "https://github.com/ladybug-analysis-tools/honeybee-plus/issues\\n" +  \\\n' + \
+        '    "https://github.com/ladybug-tools/honeybee-dynamo/issues\\n" +  \\\n' + \
         '    "and include below error message:\\n\\n" + \\\n' + \
         '    "{}".format(traceback.format_exc())\n'
 
@@ -72,6 +80,6 @@ except Exception, e:
     import traceback
     OUT = "ERROR:\n\t{}".format(str(e)) + \
         "\n\nIf you think this is a bug submit an issue on github.\n" + \
-        "https://github.com/ladybug-analysis-tools/honeybee-plus/issues\n" +  \
+        "https://github.com/ladybug-tools/honeybee-dynamo/issues\n" +  \
         "and include below error message:\n\n" + \
         "{}".format(traceback.format_exc())
