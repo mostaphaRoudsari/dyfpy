@@ -7,12 +7,12 @@ By: Mostapha Sadeghipour Rousari (mostapha@ladybug.tools)
 class Component(object):
 
     def __init__(self, name, nickname, description, code, category, subcategory):
-        self.name = name
-        self.nickname = nickname
-        self.description = description
+        self.name = name.replace('Plus', '')
+        self.nickname = nickname.replace('Plus', '')
+        self.description = description.replace('Plus', '')
         self.code = code
-        self.category = category
-        self.subcategory = subcategory
+        self.category = category.replace('Plus', '')
+        self.subcategory = subcategory.replace('Plus', '')
         self.__inputs = []
         self.__outputs = []
 
@@ -66,8 +66,14 @@ class Port(object):
             if v.IsEmpty:
                 value = None
             else:
-                value = tuple(str(i.Value).lower() if port.TypeHint.TypeName == 'bool'
-                              else i.Value for i in v.AllData(True))
+                values = tuple(str(i.Value).lower() if port.TypeHint.TypeName == 'bool'
+                               else i.Value for i in v.AllData(True))
+                try:
+                    value = tuple(v.replace('\\\\', '\\').replace('\\', '\\\\')
+                                  for v in values)
+                except AttributeError:
+                    # non string type
+                    value = values
 
             if value and str(port.Access) == 'item':
                 value = value[0]
